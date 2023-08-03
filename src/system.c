@@ -26,9 +26,10 @@ SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, d
     initialize_distances(system->distance_matrix);
     initialize_pheromones(system->pheromone_matrix);
     // ToDo -> delete this
+    // int i;
     /*     print_matrix(system->distance_matrix);
         print_matrix(system->pheromone_matrix);
-        for (int i = 0; i < n_ants; i++)
+        for (i = 0; i < n_ants; i++)
             print_vector(system->ants[i].path, n_cities); */
 
     return system;
@@ -42,10 +43,13 @@ SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, d
 ANT *initialize_ants(int n_ants, int n_cities)
 {
     ANT *ants = (ANT *)malloc(sizeof(ANT) * n_ants);
-    for (int i = 0; i < n_ants; i++)
+    int i;
+    int j;
+
+    for (i = 0; i < n_ants; i++)
     {
         ants[i].path = (int *)malloc(sizeof(int) * n_cities);
-        for (int j = 0; j < n_cities; j++)
+        for (j = 0; j < n_cities; j++)
             ants[i].path[j] = -1;
         ants[i].cost = 0;
         ants[i].current_city = rand() % n_cities;

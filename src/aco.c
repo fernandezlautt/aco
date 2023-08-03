@@ -12,11 +12,14 @@ Update pheromone matrix
 */
 void pheromone_update(SYSTEM *system)
 {
-    for (int i = 0; i < system->distance_matrix->n; i++)
-        for (int j = 0; j < system->distance_matrix->n; j++)
+    int i;
+    int j;
+
+    for (i = 0; i < system->distance_matrix->n; i++)
+        for (j = 0; j < system->distance_matrix->n; j++)
             system->pheromone_matrix->adj[i][j] *= system->evaporation_rate;
 
-    for (int i = 0; i < system->distance_matrix->n - 1; i++)
+    for (i = 0; i < system->distance_matrix->n - 1; i++)
     {
         system->pheromone_matrix->adj[system->best_path[i]][system->best_path[i + 1]] += 1.0;
     }
@@ -29,14 +32,17 @@ Verify who ant has the best path and update the best path
 */
 void calculate_best_path(SYSTEM *s)
 {
+    int i;
+    int j;
+
     int best_ant = 0;
-    for (int i = 0; i < s->distance_matrix->n; i++)
+    for (i = 0; i < s->distance_matrix->n; i++)
         if (s->ants[i].cost < s->best_cost)
         {
             s->best_cost = s->ants[i].cost;
             best_ant = i;
         }
-    for (int j = 0; j < s->distance_matrix->n; j++)
+    for (j = 0; j < s->distance_matrix->n; j++)
         s->best_path[j] = s->ants[best_ant].path[j];
 }
 
@@ -51,11 +57,13 @@ double *calculate_probabilities(SYSTEM *system, ANT *ant)
     double *probabilities = malloc(sizeof(double) * system->distance_matrix->n);
     double *pheromones = malloc(sizeof(double) * system->distance_matrix->n);
     double sum = 0;
+    int i;
+    int j;
 
-    for (int i = 0; i < system->distance_matrix->n; i++)
+    for (i = 0; i < system->distance_matrix->n; i++)
     {
         pheromones[i] = system->pheromone_matrix->adj[ant->current_city][i];
-        for (int j = 0; j < system->distance_matrix->n; j++)
+        for (j = 0; j < system->distance_matrix->n; j++)
         {
             if (ant->path[j] == i)
             {
@@ -66,7 +74,7 @@ double *calculate_probabilities(SYSTEM *system, ANT *ant)
         sum += pheromones[i];
     }
 
-    for (int i = 0; i < system->distance_matrix->n; i++)
+    for (i = 0; i < system->distance_matrix->n; i++)
     {
         probabilities[i] = pheromones[i] / sum;
     }
@@ -85,8 +93,9 @@ void ant_movement(SYSTEM *system, int n_ant)
     double r = random_zero_one();
     double sum = 0;
     int next_city = 0;
+    int i;
 
-    for (int i = 0; i < system->distance_matrix->n; i++)
+    for (i = 0; i < system->distance_matrix->n; i++)
     {
 
         sum += probabilities[i];
@@ -116,12 +125,15 @@ Initialize the ants
 int *aco(SYSTEM *system, int n_iterations)
 {
     int n = 0;
+    int i;
+    int j;
+
     while (n < n_iterations)
     {
         system->ants = initialize_ants(system->n_ants, system->distance_matrix->n);
-        for (int i = 0; i < system->distance_matrix->n; i++)
+        for (i = 0; i < system->distance_matrix->n; i++)
         {
-            for (int j = 0; j < system->n_ants; j++)
+            for (j = 0; j < system->n_ants; j++)
             {
                 ant_movement(system, j);
             }
