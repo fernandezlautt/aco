@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/*
+    Initialize the system with the given parameters.
+    The distance matrix is initialized with random values.
+    The pheromone matrix is initialized with 1.
+*/
 SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, double evaporation_rate)
 {
     SYSTEM *system = (SYSTEM *)malloc(sizeof(SYSTEM));
@@ -29,6 +34,11 @@ SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, d
     return system;
 }
 
+/*
+    Initialize the ants with the given parameters.
+    The path is initialized with -1.
+    The current city is initialized with a random value.
+*/
 ANT *initialize_ants(int n_ants, int n_cities)
 {
     ANT *ants = (ANT *)malloc(sizeof(ANT) * n_ants);
@@ -44,6 +54,7 @@ ANT *initialize_ants(int n_ants, int n_cities)
     return ants;
 }
 
+// Free memory allocated for the system
 void free_system(SYSTEM *system)
 {
     free_matrix(system->distance_matrix);

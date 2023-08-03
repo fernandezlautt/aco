@@ -5,18 +5,28 @@
 #include "system.h"
 #include "util.h"
 
+/*
+Update pheromone matrix
+    - Only the best path is updated
+    - The rest of the matrix is updated with the evaporation rate
+*/
 void pheromone_update(SYSTEM *system)
 {
     for (int i = 0; i < system->distance_matrix->n; i++)
         for (int j = 0; j < system->distance_matrix->n; j++)
             system->pheromone_matrix->adj[i][j] *= system->evaporation_rate;
+
     for (int i = 0; i < system->distance_matrix->n - 1; i++)
     {
         system->pheromone_matrix->adj[system->best_path[i]][system->best_path[i + 1]] += 1.0;
     }
+    // Last city to first city
     system->pheromone_matrix->adj[system->best_path[system->distance_matrix->n - 1]][system->best_path[0]] += 1.0;
 }
 
+/*
+Verify who ant has the best path and update the best path
+*/
 void calculate_best_path(SYSTEM *s)
 {
     int best_ant = 0;
@@ -30,6 +40,12 @@ void calculate_best_path(SYSTEM *s)
         s->best_path[j] = s->ants[best_ant].path[j];
 }
 
+/*
+Calculate probabilities of visit each city
+    - The probability of visit a city is proportional to the pheromone level
+    - P[i]=pheromone[i]/sum(pheromone)
+    - The probability of visit a city is zero if the ant has already visited that city
+*/
 double *calculate_probabilities(SYSTEM *system, ANT *ant)
 {
     double *probabilities = malloc(sizeof(double) * system->distance_matrix->n);
@@ -57,6 +73,10 @@ double *calculate_probabilities(SYSTEM *system, ANT *ant)
     return probabilities;
 }
 
+/*
+Move the ant to the next city
+    - The next city is chosen based on the probabilities of visit each city
+*/
 void ant_movement(SYSTEM *system, int n_ant)
 {
 
@@ -77,7 +97,7 @@ void ant_movement(SYSTEM *system, int n_ant)
         }
     }
 
-    //   free(probabilities);
+    free(probabilities);
 
     system->ants[n_ant].step++;
     system->ants[n_ant].path[system->ants[n_ant].step] = next_city;
@@ -85,6 +105,14 @@ void ant_movement(SYSTEM *system, int n_ant)
     system->ants[n_ant].cost += system->distance_matrix->adj[system->ants[n_ant].path[system->ants[n_ant].step - 1]][next_city];
 }
 
+/*
+Initialize the ants
+-   The cycle is repeated until reach the desired number of iterations
+    1- Each ant starts in a random city
+    2- Each ant visits each city only once
+    3- The best path is calculated
+    4- The pheromone matrix is updated
+*/
 int *aco(SYSTEM *system, int n_iterations)
 {
     int n = 0;
@@ -96,8 +124,6 @@ int *aco(SYSTEM *system, int n_iterations)
             for (int j = 0; j < system->n_ants; j++)
             {
                 ant_movement(system, j);
-                printf("Ant %d path: ", j);
-                print_vector(system->ants[j].path, system->distance_matrix->n);
             }
         }
         calculate_best_path(system);

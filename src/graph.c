@@ -1,6 +1,8 @@
 #include "graph.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+// Initialize a matrix with n rows and n columns
 void initialize_matrix(MATRIX *g, int n)
 {
     g->n = n;
@@ -9,6 +11,7 @@ void initialize_matrix(MATRIX *g, int n)
         g->adj[i] = (double *)malloc(n * sizeof(double));
 }
 
+// Initialize the distance matrix with random values
 void initialize_distances(MATRIX *g)
 {
     // symetric matrix with diagonal 0
@@ -18,6 +21,7 @@ void initialize_distances(MATRIX *g)
             g->adj[i][j] = g->adj[j][i] = i == j ? 0 : rand() % 100;
 }
 
+// Initialize the pheromone matrix with 1
 void initialize_pheromones(MATRIX *g)
 {
     for (int i = 0; i < g->n; i++)
@@ -25,6 +29,7 @@ void initialize_pheromones(MATRIX *g)
             g->adj[i][j] = 1;
 }
 
+// Print the given matrix
 void print_matrix(MATRIX *g)
 {
     for (int i = 0; i < g->n; i++)
@@ -35,6 +40,7 @@ void print_matrix(MATRIX *g)
     }
 }
 
+// Print the given vector
 void print_vector(int *v, int n)
 {
     for (int i = 0; i < n; i++)
@@ -42,6 +48,7 @@ void print_vector(int *v, int n)
     printf("\n");
 }
 
+// Free memory allocated for the matrix
 void free_matrix(MATRIX *g)
 {
     for (int i = 0; i < g->n; i++)
