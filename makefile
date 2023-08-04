@@ -1,24 +1,27 @@
-CC = gcc
+CC = nvcc
 
-CCFLAGS = -Wall -g 
+CCFLAGS = -arch=all 
 
-aco : bin/aco.o bin/main.o bin/graph.o bin/system.o bin/util.o
-	$(CC) $(CCFLAGS) -o bin/aco bin/aco.o bin/main.o bin/graph.o bin/system.o bin/util.o 
+aco : bin/aco.o bin/main.o bin/graph.o bin/system.o bin/util.o bin/utilCuda.o
+	$(CC) $(CCFLAGS) -o bin/aco bin/aco.o bin/main.o bin/graph.o bin/system.o bin/util.o bin/utilCuda.o 
 
-bin/aco.o : src/aco.c src/aco.h src/graph.h src/util.h
-	$(CC) $(CCFLAGS) -c src/aco.c -o bin/aco.o
+bin/aco.o : src/aco.cu src/aco.cuh src/graph.cuh src/util.cuh src/utilCuda.cuh
+	$(CC) $(CCFLAGS) -c src/aco.cu -o bin/aco.o
 
-bin/main.o : src/main.c src/aco.h src/graph.h src/system.h
-	$(CC) $(CCFLAGS) -c src/main.c -o bin/main.o
+bin/main.o : src/main.cu src/aco.cuh src/graph.cuh src/system.cuh
+	$(CC) $(CCFLAGS) -c src/main.cu -o bin/main.o
 
-bin/graph.o : src/graph.c src/graph.h
-	$(CC) $(CCFLAGS) -c src/graph.c -o bin/graph.o
+bin/graph.o : src/graph.cu src/graph.cuh
+	$(CC) $(CCFLAGS) -c src/graph.cu -o bin/graph.o
 
-bin/system.o : src/system.c src/system.h src/graph.h
-	$(CC) $(CCFLAGS) -c src/system.c -o bin/system.o
+bin/system.o : src/system.cu src/system.cuh src/graph.cuh
+	$(CC) $(CCFLAGS) -c src/system.cu -o bin/system.o
 
-bin/util.o : src/util.c src/util.h
-	$(CC) $(CCFLAGS) -c src/util.c -o bin/util.o
+bin/util.o : src/util.cu src/util.cuh src/system.cuh
+	$(CC) $(CCFLAGS) -c src/util.cu -o bin/util.o
+
+bin/utilCuda.o : src/utilCuda.cu src/utilCuda.cuh 
+	$(CC) $(CCFLAGS) -c src/utilCuda.cu -o bin/utilCuda.o
 
 clean:
 	rm -f bin/*.o bin/aco

@@ -1,5 +1,5 @@
-#include "graph.h"
-#include "system.h"
+#include "graph.cuh"
+#include "system.cuh"
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -49,13 +49,35 @@ ANT *initialize_ants(int n_ants, int n_cities)
     for (i = 0; i < n_ants; i++)
     {
         ants[i].path = (int *)malloc(sizeof(int) * n_cities);
+        ants[i].visited = (bool *)malloc(sizeof(bool) * n_cities);
+
         for (j = 0; j < n_cities; j++)
-            ants[i].path[j] = -1;
+            ants[i]
+                .path[j] = -1;
+
+        for (j = 0; j < n_cities; j++)
+            ants[i].visited[j] = false;
+
         ants[i].cost = 0;
+
         ants[i].current_city = rand() % n_cities;
+
         ants[i].path[0] = ants[i].current_city;
+        ants[i].visited[ants[i].current_city] = true;
+        ants[i].step = 0;
     }
     return ants;
+}
+
+void free_ants(ANT *ants, int n_ants)
+{
+    int i;
+    for (i = 0; i < n_ants; i++)
+    {
+        free(ants[i].path);
+        free(ants[i].visited);
+    }
+    free(ants);
 }
 
 // Free memory allocated for the system
@@ -63,7 +85,7 @@ void free_system(SYSTEM *system)
 {
     free_matrix(system->distance_matrix);
     free_matrix(system->pheromone_matrix);
-    free(system->ants);
+    free_ants(system->ants, system->n_ants);
     free(system->best_path);
     free(system);
 }

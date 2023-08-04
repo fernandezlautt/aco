@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "aco.h"
-#include "graph.h"
-#include "system.h"
-#include "util.h"
+#include "aco.cuh"
+#include "graph.cuh"
+#include "system.cuh"
+#include "util.cuh"
+#include "utilCuda.cuh"
+#include <cuda_runtime.h>
+#include <cuda_profiler_api.h>
+#include <pthread.h>
 
 /*
 Update pheromone matrix
@@ -42,20 +46,21 @@ void calculate_best_path(SYSTEM *s)
             s->best_cost = s->ants[i].cost;
             best_ant = i;
         }
+    // TODO -> parallelize this
     for (j = 0; j < s->distance_matrix->n; j++)
         s->best_path[j] = s->ants[best_ant].path[j];
 }
 
 /*
-Calculate probabilities of visit each city
+Calculate probabilities of visit each city (SEQUENTIAL VERSION)
     - The probability of visit a city is proportional to the pheromone level
     - P[i]=pheromone[i]/sum(pheromone)
     - The probability of visit a city is zero if the ant has already visited that city
 */
 double *calculate_probabilities(SYSTEM *system, ANT *ant)
 {
-    double *probabilities = malloc(sizeof(double) * system->distance_matrix->n);
-    double *pheromones = malloc(sizeof(double) * system->distance_matrix->n);
+    double *probabilities = (double *)malloc(sizeof(double) * system->distance_matrix->n);
+    double *pheromones = (double *)malloc(sizeof(double) * system->distance_matrix->n);
     double sum = 0;
     int i;
     int j;
@@ -81,15 +86,56 @@ double *calculate_probabilities(SYSTEM *system, ANT *ant)
     return probabilities;
 }
 
+double *calculate_probabilities_parallel(SYSTEM *system, ANT *ant)
+{
+    double *probabilities = (double *)malloc(sizeof(double) * system->distance_matrix->n);
+    double *pheromones = (double *)malloc(sizeof(double) * system->distance_matrix->n);
+    double sum = 0;
+    int i;
+
+    double *d_pheromones = nullptr;
+    double *d_probabilities = nullptr;
+    bool *d_ant_visited = nullptr;
+
+    for (i = 0; i < system->distance_matrix->n; i++)
+    {
+        if (ant->visited[i])
+        {
+        }
+        else
+        {
+            pheromones[i] = system->pheromone_matrix->adj[ant->current_city][i];
+            sum += pheromones[i];
+        }
+    }
+
+    cudaMalloc(&d_pheromones, sizeof(double) * system->distance_matrix->n);
+    cudaMalloc(&d_probabilities, sizeof(double) * system->distance_matrix->n);
+    cudaMalloc(&d_ant_visited, sizeof(bool) * system->distance_matrix->n);
+
+    cudaMemcpy(d_pheromones, pheromones, sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_ant_visited, ant->visited, sizeof(bool) * system->distance_matrix->n, cudaMemcpyHostToDevice);
+
+    probabilities_calculation<<<1, (system->distance_matrix->n)>>>(d_pheromones, d_probabilities, sum, d_ant_visited);
+
+    cudaMemcpy(probabilities, d_probabilities, sizeof(double) * system->distance_matrix->n, cudaMemcpyDeviceToHost);
+
+    cudaFree(d_pheromones);
+    cudaFree(d_probabilities);
+    cudaFree(d_ant_visited);
+
+    return probabilities;
+}
+
 /*
 Move the ant to the next city
     - The next city is chosen based on the probabilities of visit each city
 */
 void ant_movement(SYSTEM *system, int n_ant)
 {
-
-    double *probabilities = calculate_probabilities(system, &system->ants[n_ant]);
-
+    // sequential version
+    // double *probabilities = calculate_probabilities(system, &system->ants[n_ant]);
+    double *probabilities = calculate_probabilities_parallel(system, &system->ants[n_ant]);
     double r = random_zero_one();
     double sum = 0;
     int next_city = 0;
@@ -97,7 +143,6 @@ void ant_movement(SYSTEM *system, int n_ant)
 
     for (i = 0; i < system->distance_matrix->n; i++)
     {
-
         sum += probabilities[i];
         if (r <= sum)
         {
@@ -111,7 +156,24 @@ void ant_movement(SYSTEM *system, int n_ant)
     system->ants[n_ant].step++;
     system->ants[n_ant].path[system->ants[n_ant].step] = next_city;
     system->ants[n_ant].current_city = next_city;
+    system->ants[n_ant].visited[next_city] = true;
     system->ants[n_ant].cost += system->distance_matrix->adj[system->ants[n_ant].path[system->ants[n_ant].step - 1]][next_city];
+}
+
+void *run_thread(void *arg)
+{
+    int i;
+    int j;
+    THREAD *thread = (THREAD *)arg;
+    SYSTEM *system = thread->system;
+
+    for (i = 0; i < system->distance_matrix->n - 1; i++)
+    {
+        for (j = thread->thread_id; j < system->n_ants; j += thread->num_threads)
+        {
+            ant_movement(system, j);
+        }
+    }
 }
 
 /*
@@ -122,22 +184,33 @@ Initialize the ants
     3- The best path is calculated
     4- The pheromone matrix is updated
 */
-int *aco(SYSTEM *system, int n_iterations)
+int *aco(SYSTEM *system, int n_iterations, int n_threads)
 {
     int n = 0;
     int i;
-    int j;
+    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * n_threads);
+    THREAD *thread_data = initialize_thread_data(n_threads, system);
+    THREAD **thread_data_ptr = (THREAD **)malloc(sizeof(THREAD *) * n_threads);
+
+    for (i = 0; i < n_threads; i++)
+    {
+        thread_data_ptr[i] = &thread_data[i];
+    }
 
     while (n < n_iterations)
     {
         system->ants = initialize_ants(system->n_ants, system->distance_matrix->n);
-        for (i = 0; i < system->distance_matrix->n; i++)
+
+        for (i = 0; i < n_threads; i++)
         {
-            for (j = 0; j < system->n_ants; j++)
-            {
-                ant_movement(system, j);
-            }
+            pthread_create(&threads[i], NULL, run_thread, (void *)thread_data_ptr[i]);
         }
+
+        for (i = 0; i < n_threads; i++)
+        {
+            pthread_join(threads[i], NULL);
+        }
+
         calculate_best_path(system);
         pheromone_update(system);
         n++;
