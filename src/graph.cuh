@@ -13,5 +13,6 @@ void initialize_pheromones(MATRIX *g);
 void print_matrix(MATRIX *g);
 void initialize_matrix(MATRIX *g, int n);
 void print_vector(int *v, int n);
+void print_vector_double(double *v, int n);
 void free_matrix(MATRIX *g);
 #endif

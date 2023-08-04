@@ -12,6 +12,13 @@ typedef struct ANT
     bool *visited;
 } ANT;
 
+typedef struct RESULT
+{
+    int *path;
+    double time;
+    double *costs;
+} RESULT;
+
 typedef struct SYSTEM
 {
     ANT *ants;
@@ -21,12 +28,14 @@ typedef struct SYSTEM
     double best_cost;
     int n_ants;
     double evaporation_rate;
+    double reinforcement_rate;
     double alpha;
     double beta;
 } SYSTEM;
 
-SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, double evaporation_rate);
+SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, double evaporation_rate, double reinforcement_rate);
 ANT *initialize_ants(int n_ants, int n_cities);
+RESULT *initialize_result(int n_cities, int n_iterations);
 void free_system(SYSTEM *system);
 void free_ants(ANT *ants, int n_ants);
 

@@ -59,6 +59,14 @@ void print_vector(int *v, int n)
         printf("%d ", v[i]);
     printf("\n");
 }
+void print_vector_double(double *v, int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++)
+        printf("%lf ", v[i]);
+    printf("\n");
+}
 
 // Free memory allocated for the matrix
 void free_matrix(MATRIX *g)

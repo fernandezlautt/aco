@@ -12,3 +12,9 @@ __global__ void probabilities_calculation(double *pheromone, double *probabiliti
     else
         probabilities[i] = pheromone[i] / sum;
 }
+
+__global__ void copy_vector(int *vector1, int *vector2)
+{
+    int i = threadIdx.x;
+    vector1[i] = vector2[i];
+}
