@@ -15,7 +15,7 @@ SYSTEM *initialize_system(int n_cities, int n_ants, double alpha, double beta, d
     system->distance_matrix = (MATRIX *)malloc(sizeof(MATRIX));
     system->pheromone_matrix = (MATRIX *)malloc(sizeof(MATRIX));
     system->best_path = (int *)malloc(sizeof(int) * n_cities);
-    system->best_cost = 0;
+    system->best_cost = (double)INT_MAX;
     system->alpha = alpha;
     system->beta = beta;
     system->n_ants = n_ants;

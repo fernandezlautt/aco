@@ -7,11 +7,11 @@
 
 // Parameters
 #define N_CITIES 100
-#define N_ANTS 100
+#define N_ANTS 50
 #define ALPHA 0.5
 #define BETA 0.5
-#define N_ITERATIONS 500
-#define EVAPORATION_RATE 0.75
+#define N_ITERATIONS 100
+#define EVAPORATION_RATE 0.8
 #define THREADS 4
 
 int main(int argc, char *argv[])
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
     // Print the results
     print_vector(path, N_CITIES);
-    print_matrix(system->pheromone_matrix);
+    // print_matrix(system->pheromone_matrix);
     printf("Distance: %f\n", system->best_cost);
     printf("Time taken: %f\n", time_taken);
 

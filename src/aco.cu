@@ -28,7 +28,7 @@ void pheromone_update(SYSTEM *system)
         system->pheromone_matrix->adj[system->best_path[i]][system->best_path[i + 1]] += 1.0;
     }
     // Last city to first city
-    system->pheromone_matrix->adj[system->best_path[system->distance_matrix->n - 1]][system->best_path[0]] += 1.0;
+    system->pheromone_matrix->adj[system->best_path[system->distance_matrix->n - 1]][system->best_path[0]] += 0.8;
 }
 
 /*
@@ -38,9 +38,9 @@ void calculate_best_path(SYSTEM *s)
 {
     int i;
     int j;
-
     int best_ant = 0;
-    for (i = 0; i < s->distance_matrix->n; i++)
+
+    for (i = 0; i < s->n_ants; i++)
         if (s->ants[i].cost < s->best_cost)
         {
             s->best_cost = s->ants[i].cost;
@@ -213,6 +213,7 @@ int *aco(SYSTEM *system, int n_iterations, int n_threads)
 
         calculate_best_path(system);
         pheromone_update(system);
+        printf("Best cost: %f\n", system->best_cost);
         n++;
     }
     return system->best_path;
