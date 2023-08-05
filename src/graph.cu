@@ -22,7 +22,7 @@ void initialize_distances(MATRIX *g)
     for (i = 0; i < g->n; i++)
         for (j = 0; j <= i; j++)
             // adj[i][j] has the same value as adj[j][i] and adj[i][i] = 0
-            g->adj[i][j] = g->adj[j][i] = i == j ? 0 : rand() % 100;
+            g->adj[i][j] = g->adj[j][i] = i == j ? 0 : 10 + rand() % 90;
 }
 
 // Initialize the pheromone matrix with 1
@@ -65,6 +65,15 @@ void print_vector_double(double *v, int n)
 
     for (i = 0; i < n; i++)
         printf("%lf ", v[i]);
+    printf("\n");
+}
+
+void print_vector_bool(bool *v, int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++)
+        printf("%d ", v[i]);
     printf("\n");
 }
 

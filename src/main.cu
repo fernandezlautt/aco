@@ -6,13 +6,13 @@
 #include <time.h>
 
 // Parameters
-#define N_CITIES 100
-#define N_ANTS 100
-#define ALPHA 0.5
-#define BETA 0.5
-#define N_ITERATIONS 30
-#define EVAPORATION_RATE 0.5
-#define THREADS 4
+#define N_CITIES 500
+#define N_ANTS 500
+#define ALPHA 1
+#define BETA 1
+#define N_ITERATIONS 100
+#define EVAPORATION_RATE 0.75
+#define THREADS 5
 #define REINFORCEMENT 0.5
 
 int main(int argc, char *argv[])

@@ -4,13 +4,14 @@
 #include <cuda_profiler_api.h>
 #include "utilCuda.cuh"
 
-__global__ void probabilities_calculation(double *pheromone, double *probabilities, double sum, bool *visited)
+__global__ void probabilities_calculation(double *pheromone, double *probabilities, double sum, bool *visited, double *distances, int alpha, int beta)
 {
     int i = threadIdx.x;
-    if (visited[i])
+
+    if (visited[i] || distances[i] == 0)
         probabilities[i] = 0;
     else
-        probabilities[i] = pheromone[i] / sum;
+        probabilities[i] = pow(pheromone[i], alpha) * pow(1 / distances[i], beta) / sum;
 }
 
 __global__ void copy_vector(int *vector1, int *vector2)

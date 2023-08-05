@@ -8,6 +8,7 @@
 #include <cuda_runtime.h>
 #include <cuda_profiler_api.h>
 #include <pthread.h>
+#include <math.h>
 
 /*
 Update pheromone matrix
@@ -100,12 +101,12 @@ double *calculate_probabilities(SYSTEM *system, ANT *ant)
 double *calculate_probabilities_parallel(SYSTEM *system, ANT *ant)
 {
     double *probabilities = (double *)malloc(sizeof(double) * system->distance_matrix->n);
-    double *pheromones = (double *)malloc(sizeof(double) * system->distance_matrix->n);
     double sum = 0;
     int i;
 
     double *d_pheromones = nullptr;
     double *d_probabilities = nullptr;
+    double *d_distances = nullptr;
     bool *d_ant_visited = nullptr;
 
     for (i = 0; i < system->distance_matrix->n; i++)
@@ -115,26 +116,31 @@ double *calculate_probabilities_parallel(SYSTEM *system, ANT *ant)
         }
         else
         {
-            pheromones[i] = system->pheromone_matrix->adj[ant->current_city][i];
-            sum += pheromones[i];
+            sum += pow(system->pheromone_matrix->adj[ant->current_city][i], system->alpha) * pow(1.0 / system->distance_matrix->adj[ant->current_city][i], system->beta);
         }
     }
 
     cudaMalloc(&d_pheromones, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_probabilities, sizeof(double) * system->distance_matrix->n);
+    cudaMalloc(&d_distances, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_ant_visited, sizeof(bool) * system->distance_matrix->n);
 
-    cudaMemcpy(d_pheromones, pheromones, sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pheromones, system->pheromone_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
     cudaMemcpy(d_ant_visited, ant->visited, sizeof(bool) * system->distance_matrix->n, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_distances, system->distance_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
 
-    probabilities_calculation<<<1, (system->distance_matrix->n)>>>(d_pheromones, d_probabilities, sum, d_ant_visited);
+    probabilities_calculation<<<1, (system->distance_matrix->n)>>>(d_pheromones, d_probabilities, sum, d_ant_visited, d_distances, system->alpha, system->beta);
+    for (i = 0; i < system->distance_matrix->n; i++)
+    {
+        probabilities[i] = system->pheromone_matrix->adj[ant->current_city][i] * (1 / system->distance_matrix->adj[ant->current_city][i]) / sum;
+    }
 
     cudaMemcpy(probabilities, d_probabilities, sizeof(double) * system->distance_matrix->n, cudaMemcpyDeviceToHost);
 
     cudaFree(d_pheromones);
     cudaFree(d_probabilities);
     cudaFree(d_ant_visited);
-
+    cudaFree(d_distances);
     return probabilities;
 }
 
@@ -228,6 +234,7 @@ RESULT *aco(SYSTEM *system, int n_iterations, int n_threads)
 
         pheromone_update(system);
         free_ants(system->ants, system->n_ants);
+
         n++;
     }
 
