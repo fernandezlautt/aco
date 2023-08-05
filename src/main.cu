@@ -7,7 +7,7 @@
 
 // Parameters
 #define N_CITIES 500
-#define N_ANTS 500
+#define N_ANTS 50
 #define ALPHA 1
 #define BETA 1
 #define N_ITERATIONS 100

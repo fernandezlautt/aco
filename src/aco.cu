@@ -19,7 +19,7 @@ void pheromone_update(SYSTEM *system)
 {
     int i;
     int j;
-
+    // ToDo -> Parallelize
     for (i = 0; i < system->distance_matrix->n; i++)
         for (j = 0; j < system->distance_matrix->n; j++)
             system->pheromone_matrix->adj[i][j] *= system->evaporation_rate;
@@ -39,10 +39,11 @@ void calculate_best_path(SYSTEM *s)
 {
     int i;
     int best_ant = 0;
-
+    // Device variables
     int *d_best_path = nullptr;
     int *d_best_ant_path = nullptr;
 
+    // Allocate memory in device
     cudaMalloc(&d_best_path, sizeof(int) * s->distance_matrix->n);
     cudaMalloc(&d_best_ant_path, sizeof(int) * s->distance_matrix->n);
 
@@ -53,90 +54,61 @@ void calculate_best_path(SYSTEM *s)
             best_ant = i;
         }
 
+    // Copy the best path to device
     cudaMemcpy(d_best_ant_path, s->ants[best_ant].path, sizeof(int) * s->distance_matrix->n, cudaMemcpyHostToDevice);
 
+    // Copy path of the best ant to best path
     copy_vector<<<1, s->distance_matrix->n>>>(d_best_path, d_best_ant_path);
 
+    // Copy the best path to host
     cudaMemcpy(s->best_path, d_best_path, sizeof(int) * s->distance_matrix->n, cudaMemcpyDeviceToHost);
 
+    // Free memory in device
     cudaFree(d_best_path);
     cudaFree(d_best_ant_path);
 }
 
 /*
-Calculate probabilities of visit each city (SEQUENTIAL VERSION)
-    - The probability of visit a city is proportional to the pheromone level
-    - P[i]=pheromone[i]/sum(pheromone)
-    - The probability of visit a city is zero if the ant has already visited that city
+Calculate the probabilities of visit each city
+    - The probabilities are calculated based on the pheromone matrix and the distance matrix
+    - The probabilities are calculated in parallel
 */
-double *calculate_probabilities(SYSTEM *system, ANT *ant)
-{
-    double *probabilities = (double *)malloc(sizeof(double) * system->distance_matrix->n);
-    double *pheromones = (double *)malloc(sizeof(double) * system->distance_matrix->n);
-    double sum = 0;
-    int i;
-    int j;
-
-    for (i = 0; i < system->distance_matrix->n; i++)
-    {
-        pheromones[i] = system->pheromone_matrix->adj[ant->current_city][i];
-        for (j = 0; j < system->distance_matrix->n; j++)
-        {
-            if (ant->path[j] == i)
-            {
-                pheromones[i] = 0;
-                break;
-            }
-        }
-        sum += pheromones[i];
-    }
-
-    for (i = 0; i < system->distance_matrix->n; i++)
-    {
-        probabilities[i] = pheromones[i] / sum;
-    }
-    return probabilities;
-}
-
 double *calculate_probabilities_parallel(SYSTEM *system, ANT *ant)
 {
     double *probabilities = (double *)malloc(sizeof(double) * system->distance_matrix->n);
     double sum = 0;
     int i;
-
+    // Device variables
     double *d_pheromones = nullptr;
     double *d_probabilities = nullptr;
     double *d_distances = nullptr;
     bool *d_ant_visited = nullptr;
 
+    // Calculate the sum of the probabilities
     for (i = 0; i < system->distance_matrix->n; i++)
     {
-        if (ant->visited[i])
-        {
-        }
-        else
-        {
+        if (!ant->visited[i])
             sum += pow(system->pheromone_matrix->adj[ant->current_city][i], system->alpha) * pow(1.0 / system->distance_matrix->adj[ant->current_city][i], system->beta);
-        }
     }
 
+    // Allocate memory in device
     cudaMalloc(&d_pheromones, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_probabilities, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_distances, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_ant_visited, sizeof(bool) * system->distance_matrix->n);
 
+    // Copy data to device
     cudaMemcpy(d_pheromones, system->pheromone_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
     cudaMemcpy(d_ant_visited, ant->visited, sizeof(bool) * system->distance_matrix->n, cudaMemcpyHostToDevice);
     cudaMemcpy(d_distances, system->distance_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
 
+    // Calculate the probabilities
     probabilities_calculation<<<1, (system->distance_matrix->n)>>>(d_pheromones, d_probabilities, sum, d_ant_visited, d_distances, system->alpha, system->beta);
-    for (i = 0; i < system->distance_matrix->n; i++)
-    {
-        probabilities[i] = system->pheromone_matrix->adj[ant->current_city][i] * (1 / system->distance_matrix->adj[ant->current_city][i]) / sum;
-    }
 
+    // Copy the probabilities to host
     cudaMemcpy(probabilities, d_probabilities, sizeof(double) * system->distance_matrix->n, cudaMemcpyDeviceToHost);
 
+    // Free memory in device
     cudaFree(d_pheromones);
     cudaFree(d_probabilities);
     cudaFree(d_ant_visited);
@@ -150,8 +122,6 @@ Move the ant to the next city
 */
 void ant_movement(SYSTEM *system, int n_ant)
 {
-    // sequential version
-    // double *probabilities = calculate_probabilities(system, &system->ants[n_ant]);
     double *probabilities = calculate_probabilities_parallel(system, &system->ants[n_ant]);
     double r = random_zero_one();
     double sum = 0;
@@ -170,6 +140,7 @@ void ant_movement(SYSTEM *system, int n_ant)
 
     free(probabilities);
 
+    // Update the ant
     system->ants[n_ant].step++;
     system->ants[n_ant].path[system->ants[n_ant].step] = next_city;
     system->ants[n_ant].current_city = next_city;
@@ -177,6 +148,10 @@ void ant_movement(SYSTEM *system, int n_ant)
     system->ants[n_ant].cost += system->distance_matrix->adj[system->ants[n_ant].path[system->ants[n_ant].step - 1]][next_city];
 }
 
+/*
+    Run the thread
+    - Each thread is responsible for a part of the ants
+*/
 void *run_thread(void *arg)
 {
     int i;
@@ -205,7 +180,9 @@ RESULT *aco(SYSTEM *system, int n_iterations, int n_threads)
 {
     int n = 0;
     int i;
+    // Initialize the result struct
     RESULT *result = initialize_result(system->distance_matrix->n, n_iterations);
+    // Allocate threads and thread data
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * n_threads);
     THREAD *thread_data = initialize_thread_data(n_threads, system);
     THREAD **thread_data_ptr = (THREAD **)malloc(sizeof(THREAD *) * n_threads);
