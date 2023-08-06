@@ -18,16 +18,36 @@ Update pheromone matrix
 void pheromone_update(SYSTEM *system)
 {
     int i;
-    int j;
-    // ToDo -> Parallelize
-    for (i = 0; i < system->distance_matrix->n; i++)
-        for (j = 0; j < system->distance_matrix->n; j++)
-            system->pheromone_matrix->adj[i][j] *= system->evaporation_rate;
 
+    // Device variables
+    double *d_pheromone_matrix = nullptr;
+
+    // Allocate memory in device
+    cudaMalloc(&d_pheromone_matrix, sizeof(double) * system->distance_matrix->n * system->distance_matrix->n);
+
+    for (i = 0; i < system->distance_matrix->n; i++)
+    {
+        cudaMemcpy(&d_pheromone_matrix[i * system->distance_matrix->n], system->pheromone_matrix->adj[i], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
+    }
+
+    // Update pheromone matrix
+    multiply_matrix_escalar<<<system->distance_matrix->n, system->distance_matrix->n>>>(d_pheromone_matrix, system->evaporation_rate, system->distance_matrix->n);
+
+    // Copy data to host
+    for (i = 0; i < system->distance_matrix->n; i++)
+    {
+        cudaMemcpy(system->pheromone_matrix->adj[i], &d_pheromone_matrix[i * system->distance_matrix->n], sizeof(double) * system->distance_matrix->n, cudaMemcpyDeviceToHost);
+    }
+
+    // Free memory in device
+    cudaFree(d_pheromone_matrix);
+
+    // Reinforce the best path
     for (i = 0; i < system->distance_matrix->n - 1; i++)
     {
         system->pheromone_matrix->adj[system->best_path[i]][system->best_path[i + 1]] += system->reinforcement_rate;
     }
+
     // Last city to first city
     system->pheromone_matrix->adj[system->best_path[system->distance_matrix->n - 1]][system->best_path[0]] += system->reinforcement_rate;
 }
@@ -90,21 +110,17 @@ double *calculate_probabilities_parallel(SYSTEM *system, ANT *ant)
         if (!ant->visited[i])
             sum += pow(system->pheromone_matrix->adj[ant->current_city][i], system->alpha) * pow(1.0 / system->distance_matrix->adj[ant->current_city][i], system->beta);
     }
-
     // Allocate memory in device
     cudaMalloc(&d_pheromones, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_probabilities, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_distances, sizeof(double) * system->distance_matrix->n);
     cudaMalloc(&d_ant_visited, sizeof(bool) * system->distance_matrix->n);
-
     // Copy data to device
     cudaMemcpy(d_pheromones, system->pheromone_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
     cudaMemcpy(d_ant_visited, ant->visited, sizeof(bool) * system->distance_matrix->n, cudaMemcpyHostToDevice);
     cudaMemcpy(d_distances, system->distance_matrix->adj[ant->current_city], sizeof(double) * system->distance_matrix->n, cudaMemcpyHostToDevice);
-
     // Calculate the probabilities
     probabilities_calculation<<<1, (system->distance_matrix->n)>>>(d_pheromones, d_probabilities, sum, d_ant_visited, d_distances, system->alpha, system->beta);
-
     // Copy the probabilities to host
     cudaMemcpy(probabilities, d_probabilities, sizeof(double) * system->distance_matrix->n, cudaMemcpyDeviceToHost);
 
@@ -128,6 +144,7 @@ void ant_movement(SYSTEM *system, int n_ant)
     int next_city = 0;
     int i;
 
+    // Choose the next city
     for (i = 0; i < system->distance_matrix->n; i++)
     {
         sum += probabilities[i];
@@ -138,6 +155,7 @@ void ant_movement(SYSTEM *system, int n_ant)
         }
     }
 
+    // Free memory
     free(probabilities);
 
     // Update the ant
@@ -186,7 +204,6 @@ RESULT *aco(SYSTEM *system, int n_iterations, int n_threads)
     pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * n_threads);
     THREAD *thread_data = initialize_thread_data(n_threads, system);
     THREAD **thread_data_ptr = (THREAD **)malloc(sizeof(THREAD *) * n_threads);
-
     for (i = 0; i < n_threads; i++)
     {
         thread_data_ptr[i] = &thread_data[i];
@@ -208,7 +225,6 @@ RESULT *aco(SYSTEM *system, int n_iterations, int n_threads)
 
         calculate_best_path(system);
         result->costs[n] = system->best_cost;
-
         pheromone_update(system);
         free_ants(system->ants, system->n_ants);
 

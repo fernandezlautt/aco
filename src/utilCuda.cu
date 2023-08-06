@@ -19,3 +19,14 @@ __global__ void copy_vector(int *vector1, int *vector2)
     int i = threadIdx.x;
     vector1[i] = vector2[i];
 }
+
+__global__ void multiply_matrix_escalar(double *matrix, double escalar, int size)
+{
+    int i = threadIdx.x;
+    int j = blockIdx.x;
+
+    if (i < size && j < size)
+    {
+        matrix[j * size + i] *= escalar;
+    }
+}
