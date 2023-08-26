@@ -234,6 +234,7 @@ RESULT *aco(SYSTEM *system, int n_iterations, int n_threads)
     free(threads);
     free(thread_data);
     free(thread_data_ptr);
+
     result->path = system->best_path;
 
     return result;

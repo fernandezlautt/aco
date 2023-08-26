@@ -8,8 +8,8 @@
 #include <time.h>
 
 // Parameters
-#define N_CITIES 194
-#define N_ANTS 500
+#define N_CITIES 100
+#define N_ANTS 50
 #define ALPHA 1
 #define BETA 1
 #define N_ITERATIONS 50
@@ -29,15 +29,24 @@ int main(int argc, char *argv[])
     cudaDeviceReset();
 
     start = clock();
+
     // Run the algorithm
     result = aco(system, N_ITERATIONS, THREADS);
+
     end = clock();
+
     result->time = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+    // Data for python
+    printf("%f\n", result->time);
+    printf("%i\n", N_CITIES);
+    printf("%i\n", N_ANTS);
+    printf("%i\n", N_ITERATIONS);
 
     // Print the results
     print_vector(result->path, N_CITIES);
+
     print_vector_double(result->costs, N_ITERATIONS);
-    printf("Time taken: %f\n", result->time);
 
     // Free memory
     free_system(system);
