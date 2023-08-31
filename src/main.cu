@@ -19,11 +19,19 @@
 
 int main(int argc, char *argv[])
 {
+    char *p;
+    int n_cities = strtol(argv[1], &p, 10);
+    int n_ants = strtol(argv[2], &p, 10);
+    float alpha = atof(argv[3]);
+    float beta = atof(argv[4]);
+    float evaporation_rate = atof(argv[5]);
+    int cycles = strtol(argv[6], &p, 10);
+
     clock_t start, end;
     RESULT *result = nullptr;
 
     // Initialize the system
-    SYSTEM *system = initialize_system(N_CITIES, N_ANTS, ALPHA, BETA, EVAPORATION_RATE, REINFORCEMENT);
+    SYSTEM *system = initialize_system(n_cities, n_ants, alpha, beta, evaporation_rate, REINFORCEMENT);
 
     // Reset gpu
     cudaDeviceReset();
@@ -31,22 +39,24 @@ int main(int argc, char *argv[])
     start = clock();
 
     // Run the algorithm
-    result = aco(system, N_ITERATIONS, THREADS);
+    result = aco(system, cycles, THREADS);
 
     end = clock();
 
     result->time = ((double)(end - start)) / CLOCKS_PER_SEC;
 
-    // Data for python
-    printf("%f\n", result->time);
-    printf("%i\n", N_CITIES);
-    printf("%i\n", N_ANTS);
-    printf("%i\n", N_ITERATIONS);
+    printf("%ld\n", end - start);
+
+    // // Data for python
+    // printf("%f\n", result->time);
+    // printf("%i\n", N_CITIES);
+    // printf("%i\n", N_ANTS);
+    // printf("%i\n", N_ITERATIONS);
 
     // Print the results
-    print_vector(result->path, N_CITIES);
+    // print_vector(result->path, N_CITIES);
 
-    print_vector_double(result->costs, N_ITERATIONS);
+    // print_vector_double(result->costs, N_ITERATIONS);
 
     // Free memory
     free_system(system);

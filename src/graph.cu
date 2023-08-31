@@ -63,7 +63,7 @@ void print_vector_double(double *v, int n)
     int i;
 
     for (i = 0; i < n; i++)
-        printf("%lf\n", v[i]);
+        printf("%lf ", v[i]);
 }
 
 void print_vector_bool(bool *v, int n)
